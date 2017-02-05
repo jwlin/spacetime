@@ -2,7 +2,8 @@ import logging
 from datamodel.search.datamodel import ProducedLink, OneUnProcessedGroup, robot_manager
 from spacetime_local.IApplication import IApplication
 from spacetime_local.declarations import Producer, GetterSetter, Getter
-from lxml import html,etree
+#from lxml import html,etree
+from bs4 import BeautifulSoup
 import re, os
 from time import time
 
@@ -19,7 +20,7 @@ LOG_HEADER = "[CRAWLER]"
 url_count = 0 if not os.path.exists("successful_urls.txt") else (len(open("successful_urls.txt").readlines()) - 1)
 if url_count < 0:
     url_count = 0
-MAX_LINKS_TO_DOWNLOAD = 20
+MAX_LINKS_TO_DOWNLOAD = 200
 
 @Producer(ProducedLink)
 @GetterSetter(OneUnProcessedGroup)
@@ -28,10 +29,10 @@ class CrawlerFrame(IApplication):
     def __init__(self, frame):
         self.starttime = time()
         # Set app_id <student_id1>_<student_id2>...
-        self.app_id = ""
+        self.app_id = "44457392"
         # Set user agent string to IR W17 UnderGrad <student_id1>, <student_id2> ...
         # If Graduate studetn, change the UnderGrad part to Grad.
-        self.UserAgentString = None
+        self.UserAgentString = "IR W17 Grad 44457392"
 		
         self.frame = frame
         assert(self.UserAgentString != None)
@@ -50,6 +51,7 @@ class CrawlerFrame(IApplication):
             print "Got a Group"
             outputLinks = process_url_group(g, self.UserAgentString)
             for l in outputLinks:
+                print l, is_valid(l)
                 if is_valid(l) and robot_manager.Allowed(l, self.UserAgentString):
                     lObj = ProducedLink(l, self.UserAgentString)
                     self.frame.add(lObj)
@@ -86,6 +88,45 @@ def extract_next_links(rawDatas):
 
     Suggested library: lxml
     '''
+    print 'len of rawDatas', len(rawDatas)
+    for element in rawDatas:
+        src_url = element[0]
+        print 'src_url:', src_url
+        parsed = urlparse(src_url)
+        # check if there is username:password@hostname
+        credential = ''
+        if parsed.username:
+            credential = parsed.username
+            credential += ':' + parsed.password + '@' if parsed.password else '@'
+        # remove trailing '/'
+        path = parsed.path[:-1] if parsed.path[-1] == '/' else parsed.path
+        # path: '/a/b/c.html' -> '/a/b/'
+        path = '/'.join(path.split('/')[:-1]) + '/'
+        url_prefix = parsed.scheme + '://' + credential + parsed.hostname
+
+        soup = BeautifulSoup(element[1], 'html.parser')
+        links = soup.find_all('a')
+        for link in links:
+            print link
+            if 'href' in link.attrs.keys():
+                href = link['href']
+                if '#' in href:
+                    href = re.sub(r'#.*', '', href)
+                if href.startswith('mailto') or not href:
+                    print 'Not an URL'
+                elif href.startswith('/'):
+                    o_link = url_prefix + href
+                elif href.startswith('http'):
+                    o_link = href
+                else:
+                    o_link = url_prefix + path + href
+                    # todo:
+                    # ../../../about/annualreport/index.php
+                    # <a href="../Author/David-J-Pearce.html">David J. Pearce</a>
+                    # http://fano.ics.uci.edu/cites/Document/../Author/David-J-Pearce.html
+                    # http://fano.ics.uci.edu/cites/Author/David-J-Pearce.html
+                print o_link
+                outputLinks.append(o_link)
     return outputLinks
 
 def is_valid(url):

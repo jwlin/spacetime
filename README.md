@@ -1,3 +1,5 @@
+# [Note](https://hackmd.io/AwZghsYCYMZQtATgEYCZXwCzAIwFZ4wcB2TeKKMMPY5RHAM0zyA=?both)
+
 # Spacetime Framework
 ===========
 A framework for developing time-stepped, multi-worker applications based on the tuplespace model. Workers compute within spacetimed frames -- a fixed portion of the shared data during a fixed period of time. The locally modified data may be pushed back to the shared store at the end of each step. Pulling and pushing data from/to the store is done declaratively using two small DSLs: (1) a DSL for
