@@ -92,6 +92,7 @@ def extract_next_links(rawDatas):
     for element in rawDatas:
         src_url = element[0]
         print 'src_url:', src_url
+        print element[1]
         parsed = urlparse(src_url)
         # check if there is username:password@hostname
         credential = ''
@@ -129,6 +130,7 @@ def extract_next_links(rawDatas):
                 if o_link:
                     print o_link
                 outputLinks.append(o_link)
+                raw_input()
     return outputLinks
 
 def is_valid(url):
