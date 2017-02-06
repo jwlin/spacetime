@@ -20,7 +20,7 @@ LOG_HEADER = "[CRAWLER]"
 url_count = 0 if not os.path.exists("successful_urls.txt") else (len(open("successful_urls.txt").readlines()) - 1)
 if url_count < 0:
     url_count = 0
-MAX_LINKS_TO_DOWNLOAD = 200
+MAX_LINKS_TO_DOWNLOAD = 20
 
 @Producer(ProducedLink)
 @GetterSetter(OneUnProcessedGroup)
@@ -108,6 +108,7 @@ def extract_next_links(rawDatas):
         links = soup.find_all('a')
         for link in links:
             print link
+            o_link = ''
             if 'href' in link.attrs.keys():
                 href = link['href']
                 if '#' in href:
@@ -125,7 +126,8 @@ def extract_next_links(rawDatas):
                     # <a href="../Author/David-J-Pearce.html">David J. Pearce</a>
                     # http://fano.ics.uci.edu/cites/Document/../Author/David-J-Pearce.html
                     # http://fano.ics.uci.edu/cites/Author/David-J-Pearce.html
-                print o_link
+                if o_link:
+                    print o_link
                 outputLinks.append(o_link)
     return outputLinks
 
