@@ -98,7 +98,7 @@ def extract_next_links(rawDatas):
     '''
     print 'len of rawDatas', len(rawDatas)
     for element in rawDatas:
-        src_url = element[0]
+        src_url = element.url
         print 'src_url:', src_url
         #print element[1]
         parsed = urlparse(src_url)
@@ -108,12 +108,13 @@ def extract_next_links(rawDatas):
             credential = parsed.username
             credential += ':' + parsed.password + '@' if parsed.password else '@'
         # remove trailing '/'
-        path = parsed.path[:-1] if parsed.path[-1] == '/' else parsed.path
+        print parsed
+        path = parsed.path[:-1] if parsed.path and parsed.path[-1] == '/' else parsed.path
         # path: '/a/b/c.html' -> '/a/b/'
         path = '/'.join(path.split('/')[:-1]) + '/'
         url_prefix = parsed.scheme + '://' + credential + parsed.hostname
 
-        soup = BeautifulSoup(element[1], 'html.parser')
+        soup = BeautifulSoup(element.content, 'html.parser')
         links = soup.find_all('a')
         for link in links:
             print link
