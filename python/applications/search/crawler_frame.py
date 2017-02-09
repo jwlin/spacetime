@@ -21,7 +21,7 @@ url_count = (set()
     if not os.path.exists("successful_urls.txt") else 
     set([line.strip() for line in open("successful_urls.txt").readlines() if line.strip() != ""]))
 MAX_LINKS_TO_DOWNLOAD = 3000
-
+trapCheckTable = {}    #for checking the trap in is_valid()
 
 @Producer(ProducedLink)
 @GetterSetter(OneUnProcessedGroup)
@@ -152,24 +152,53 @@ def is_valid(url):
     This is a great place to filter out crawler traps.
     '''
 
+    #checking is the website connectable
     try:
         check = requests.get(url)
-        if (check.status_code == 200):
-            checkFlag = True
+        if check.status_code != 200:
+            return False
     except requests.RequestException:
-        checkFlag = False
+        return False
 
+    #the url must be start with http and https, and only website from ics.uci.edu, not ending with the following file format
     parsed = urlparse(url)
     if parsed.scheme not in set(["http", "https"]):
         return False
     try:
-        return ".ics.uci.edu" in parsed.hostname \
-               and not re.match(".*\.(css|js|bmp|gif|jpe?g|ico" + "|png|tiff?|mid|mp2|mp3|mp4" \
+        if ".ics.uci.edu" not in parsed.hostname \
+               or re.match(".*\.(css|js|bmp|gif|jpe?g|ico" + "|png|tiff?|mid|mp2|mp3|mp4" \
                                 + "|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf" \
                                 + "|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso|epub|dll|cnf|tgz|sha1" \
                                 + "|thmx|mso|arff|rtf|jar|csv" \
-                                + "|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower()) \
-               and checkFlag
-
+                                + "|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower()):
+            return False
     except TypeError:
         print ("TypeError for ", parsed)
+
+    #detecting the trap
+
+    value = parse_qs(urlparse(url).query)
+    key = urlparse(url).netloc + urlparse(url).path
+
+    if len(set(value)) < 2 or 'id' in set(value):
+        return True
+
+
+    # if the url can be found in the comparing table, and the similarity of it's query's parameter is up to 50 %, define it as a trap
+    if key in trapCheckTable:
+        '''
+        if set(value) == trapCheckTable[key]:
+                return False
+        '''
+        count = 0
+        for item in set(value):
+            if item in trapCheckTable[key]:
+                count += 1
+        if count / float(max(len(trapCheckTable[key]), len(set(value)))) > 0.5:
+            return False
+        else:
+            return True
+    else:
+        trapCheckTable[key] = set(value)
+        return True
+
