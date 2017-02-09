@@ -22,6 +22,7 @@ url_count = (set()
     set([line.strip() for line in open("successful_urls.txt").readlines() if line.strip() != ""]))
 MAX_LINKS_TO_DOWNLOAD = 3000
 trapCheckTable = {}    #for checking the trap in is_valid()
+invalidLinkCount = 0   #for counting the invalid link
 
 @Producer(ProducedLink)
 @GetterSetter(OneUnProcessedGroup)
@@ -156,13 +157,16 @@ def is_valid(url):
     try:
         check = requests.get(url)
         if check.status_code != 200:
+            invalidLinkCount += 1
             return False
     except requests.RequestException:
+        invalidLinkCount += 1
         return False
 
     #the url must be start with http and https, and only website from ics.uci.edu, not ending with the following file format
     parsed = urlparse(url)
     if parsed.scheme not in set(["http", "https"]):
+        invalidLinkCount += 1
         return False
     try:
         if ".ics.uci.edu" not in parsed.hostname \
@@ -171,6 +175,7 @@ def is_valid(url):
                                 + "|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso|epub|dll|cnf|tgz|sha1" \
                                 + "|thmx|mso|arff|rtf|jar|csv" \
                                 + "|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower()):
+            invalidLinkCount += 1
             return False
     except TypeError:
         print ("TypeError for ", parsed)
@@ -195,6 +200,7 @@ def is_valid(url):
             if item in trapCheckTable[key]:
                 count += 1
         if count / float(max(len(trapCheckTable[key]), len(set(value)))) > 0.5:
+            invalidLinkCount += 1
             return False
         else:
             return True
