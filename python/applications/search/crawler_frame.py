@@ -152,7 +152,8 @@ def is_valid(url):
 
     This is a great place to filter out crawler traps.
     '''
-
+    global invalidLinkCount
+    global trapCheckTable
     #checking is the website connectable
     try:
         check = requests.get(url)
