@@ -30,10 +30,10 @@ class CrawlerFrame(IApplication):
     def __init__(self, frame):
         self.starttime = time()
         # Set app_id <student_id1>_<student_id2>...
-        self.app_id = "44457392_13802479"
+        self.app_id = "44457392_13802479_32887430"
         # Set user agent string to IR W17 UnderGrad <student_id1>, <student_id2> ...
         # If Graduate studetn, change the UnderGrad part to Grad.
-        self.UserAgentString = "IR W17 Grad 44457392,13802479"
+        self.UserAgentString = "IR W17 Grad 44457392,13802479,32887430"
 
         self.frame = frame
         assert(self.UserAgentString != None)
@@ -191,21 +191,20 @@ def is_valid(url):
 
 
     # if the url can be found in the comparing table, and the similarity of it's query's parameter is up to 50 %, define it as a trap
-    if key in trapCheckTable:
-        '''
-        if set(value) == trapCheckTable[key]:
-                return False
-        '''
+    if key in trapCheckTable and len(trapCheckTable[key]) >= 5:
         count = 0
-        for item in set(value):
-            if item in trapCheckTable[key]:
+        for item in trapCheckTable[key]:
+            if set(value) == set(item):
                 count += 1
-        if count / float(max(len(trapCheckTable[key]), len(set(value)))) > 0.5:
-            invalidLinkCount += 1
+        if count >= 5:
             return False
         else:
+            trapCheckTable[key].append(value)
             return True
+    elif key in trapCheckTable and len(trapCheckTable[key]) < 5:
+        trapCheckTable[key].append(value)
+        return True
     else:
-        trapCheckTable[key] = set(value)
+        trapCheckTable[key] = [value]
         return True
 
