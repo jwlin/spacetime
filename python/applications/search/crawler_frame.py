@@ -22,7 +22,8 @@ url_count = (set()
     set([line.strip() for line in open("successful_urls.txt").readlines() if line.strip() != ""]))
 MAX_LINKS_TO_DOWNLOAD = 3000
 trapCheckTable = {}    #for checking the trap in is_valid()
-invalidLinkCount = 0   #for counting the invalid link
+subDomainCount = {}    #for counting the number of subdomain
+invalidLinkCount = 0   #for counting the number of invalid link
 
 @Producer(ProducedLink)
 @GetterSetter(OneUnProcessedGroup)
@@ -210,3 +211,12 @@ def is_valid(url):
         trapCheckTable[key] = [value]
         return True
 
+# counting the numbers of subdomain
+def countSubDomain(url):
+    global subDomainCount
+    parsed = urlparse(url)
+    subDomain = re.sub('\.ics.uci.edu$', '', parsed.hostname)
+    if subDomain in subDomainCount:
+        subDomainCount[subDomain] += 1
+    else:
+        subDomainCount[subDomain] = 1
