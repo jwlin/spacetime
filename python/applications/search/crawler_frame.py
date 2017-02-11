@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 import re, os
 from time import time
 import requests
+from util import merge_path, remove_trailing_junk
 
 try:
     # For python 2
@@ -103,45 +104,42 @@ def extract_next_links(rawDatas):
     global invalidLinkCount
     print 'len of rawDatas', len(rawDatas)
     for element in rawDatas:
-        print element.error_message
-        print element.http_code
-        print element.headers
-        print element.is_redirected
-        print element.final_url
-        print element.bad_url
-        print element.out_links
+        print 'error_message', element.error_message
+        print 'http_code', element.http_code
+        print 'headers', element.headers
+        print 'is_redirected', element.is_redirected
+        print 'final_url', element.final_url
+        print 'bad_url', element.bad_url
+        print 'out_links', element.out_links
         raw_input()
 
-        if element.http_code != '200':
+        if str(element.http_code) != '200':
             invalidLinkCount += 1
             element.bad_url = True
+            print 'wrong http_code'
             continue
 
+        src_url = element.url
         if element.is_redirected:
             src_url = element.final_url
-        print 'src_url:', src_url
 
         if not is_valid(src_url):
             element.bad_url = True
+            print 'invalid'
             continue
 
-        # remove trailing string after parameters
-        # e.g. http://www.ics.uci.edu?p=2&c=igb-misc/degrees/index/grad/... ->  http://www.ics.uci.edu?p=2&c=igb-misc
-        if '?' in src_url and '/' in src_url[src_url.index('?'):]:
-            src_url = src_url[
-                src_url.index('?') +
-                src_url[src_url.index('?'):].index('/')
-            ]
-
+        src_url = remove_trailing_junk(src_url)  # remove trailing string after parameters
+        print 'src_url:', src_url
         parsed = urlparse(src_url)
+        print parsed
         # check if there is username:password@hostname
         credential = ''
         if parsed.username:
             credential = parsed.username
             credential += ':' + parsed.password + '@' if parsed.password else '@'
-        # remove trailing '/'
-        print parsed
-        path = parsed.path[:-1] if parsed.path and parsed.path[-1] == '/' else parsed.path
+
+        #path = parsed.path[:-1] if parsed.path and parsed.path[-1] == '/' else parsed.path
+        path = parsed.path
         # path: '/a/b/c.html' -> '/a/b/'
         path = '/'.join(path.split('/')[:-1]) + '/'
         url_prefix = parsed.scheme + '://' + credential + parsed.hostname
@@ -153,22 +151,22 @@ def extract_next_links(rawDatas):
             o_link = ''
             if 'href' in link.attrs.keys():
                 href = link['href']
+                href = remove_trailing_junk(href)
                 if '#' in href:
                     href = re.sub(r'#.*', '', href)
+                if href.startswith('./'):
+                    href = href[2:]
                 if href.startswith('mailto') or not href:
-                    print 'Not an URL'
+                    pass
+                    #print 'Not an URL'
                 elif href.startswith('/'):
                     o_link = url_prefix + href
                 elif href.startswith('http'):
                     o_link = href
+                elif '../' in href:
+                    o_link = url_prefix + merge_path(path, href)
                 else:
                     o_link = url_prefix + path + href
-                    # todo:
-                    # ../../../about/annualreport/index.php
-                    # <a href="../Author/David-J-Pearce.html">David J. Pearce</a>
-                    # http://fano.ics.uci.edu/cites/Document/../Author/David-J-Pearce.html
-                    # http://fano.ics.uci.edu/cites/Author/David-J-Pearce.html
-                    # <a href="?s=people">People</a>
                 if o_link:
                     print o_link
                     outputLinks.append(o_link)
@@ -185,15 +183,6 @@ def is_valid(url):
     '''
     global invalidLinkCount
     global trapCheckTable
-    #checking is the website connectable
-    try:
-        check = requests.get(url)
-        if check.status_code != 200:
-            invalidLinkCount += 1
-            return False
-    except requests.RequestException:
-        invalidLinkCount += 1
-        return False
 
     #the url must be start with http and https, and only website from ics.uci.edu, not ending with the following file format
     parsed = urlparse(url)
@@ -212,14 +201,21 @@ def is_valid(url):
     except TypeError:
         print ("TypeError for ", parsed)
 
-    #detecting the trap
+    #checking is the website connectable
+    try:
+        check = requests.get(url)
+        if check.status_code != 200:
+            invalidLinkCount += 1
+            return False
+    except requests.RequestException:
+        invalidLinkCount += 1
+        return False
 
+    #detecting the trap
     value = parse_qs(urlparse(url).query)
     key = urlparse(url).netloc + urlparse(url).path
-
     if len(set(value)) < 2 or 'id' in set(value):
         return True
-
 
     # check the incoming url with the url hash table. If there are more than 5 urls having exactly the same queries with the incoming url, 
     # the incoming url will be identified as a trap and therefore return False.
