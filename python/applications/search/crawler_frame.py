@@ -99,11 +99,39 @@ def extract_next_links(rawDatas):
 
     Suggested library: lxml
     '''
+    global invalidLinkCount
     print 'len of rawDatas', len(rawDatas)
     for element in rawDatas:
-        src_url = element.url
+        print element.error_message
+        print element.http_code
+        print element.headers
+        print element.is_redirected
+        print element.final_url
+        print element.bad_url
+        print element.out_links
+        raw_input()
+
+        if element.http_code != '200':
+            invalidLinkCount += 1
+            element.bad_url = True
+            continue
+
+        if element.is_redirected:
+            src_url = element.final_url
         print 'src_url:', src_url
-        #print element[1]
+
+        if not is_valid(src_url):
+            element.bad_url = True
+            continue
+
+        # remove trailing string after parameters
+        # e.g. http://www.ics.uci.edu?p=2&c=igb-misc/degrees/index/grad/... ->  http://www.ics.uci.edu?p=2&c=igb-misc
+        if '?' in src_url and '/' in src_url[src_url.index('?'):]:
+            src_url = src_url[
+                src_url.index('?') +
+                src_url[src_url.index('?'):].index('/')
+            ]
+
         parsed = urlparse(src_url)
         # check if there is username:password@hostname
         credential = ''
@@ -143,7 +171,7 @@ def extract_next_links(rawDatas):
                 if o_link:
                     print o_link
                     outputLinks.append(o_link)
-                #raw_input()
+                raw_input()
     return outputLinks
 
 
