@@ -192,17 +192,17 @@ def is_valid(url):
         return True
 
 
-    # if the url can be found in the comparing table, and the similarity of it's query's parameter is up to 50 %, define it as a trap
+    # check the incoming url with the url hash table. If there are more than 5 urls having exactly the same queries with the incoming url, 
+    # the incoming url will be identified as a trap and therefore return False.
     if key in trapCheckTable and len(trapCheckTable[key]) >= 5:
         count = 0
         for item in trapCheckTable[key]:
             if set(value) == set(item):
                 count += 1
-        if count >= 5:
-            return False
-        else:
-            trapCheckTable[key].append(value)
-            return True
+                if count >= 5:
+                    return False
+        trapCheckTable[key].append(value)
+        return True
     elif key in trapCheckTable and len(trapCheckTable[key]) < 5:
         trapCheckTable[key].append(value)
         return True
