@@ -235,11 +235,11 @@ def is_valid(url):
         trapCheckTable[key] = [value]
         return True
 
-# counting the numbers of subdomain
+# counting the numbers of subdomain, please execute is_valid to determine using this function
 def countSubDomain(url):
     global subDomainCount
     parsed = urlparse(url)
-    subDomain = re.sub('\.ics.uci.edu$', '', parsed.hostname)
+    subDomain = re.sub('\.ics\.uci\.edu', '', parsed.hostname)
     if subDomain in subDomainCount:
         subDomainCount[subDomain] += 1
     else:
