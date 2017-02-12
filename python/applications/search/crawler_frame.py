@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 import re, os
 from time import time
 import requests
-from util import merge_path, remove_trailing_junk
+from util import merge_path, remove_trailing_junk, is_not_trap, save_data, load_data
 
 try:
     # For python 2
@@ -21,10 +21,9 @@ LOG_HEADER = "[CRAWLER]"
 url_count = (set() 
     if not os.path.exists("successful_urls.txt") else 
     set([line.strip() for line in open("successful_urls.txt").readlines() if line.strip() != ""]))
-MAX_LINKS_TO_DOWNLOAD = 3000
-trapCheckTable = {}    #for checking the trap in is_valid()
-subDomainCount = {}    #for counting the number of subdomain
-invalidLinkCount = 0   #for counting the number of invalid link
+MAX_LINKS_TO_DOWNLOAD = 50
+
+trapCheckTable, subDomainCount, invalid_links, trap_links, max_out_link = load_data('data.json')
 
 @Producer(ProducedLink)
 @GetterSetter(OneUnProcessedGroup)
@@ -57,7 +56,6 @@ class CrawlerFrame(IApplication):
                 if urlResp.bad_url and self.UserAgentString not in set(urlResp.dataframe_obj.bad_url):
                     urlResp.dataframe_obj.bad_url += [self.UserAgentString]
             for l in outputLinks:
-                print l, is_valid(l)
                 if is_valid(l) and robot_manager.Allowed(l, self.UserAgentString):
                     lObj = ProducedLink(l, self.UserAgentString)
                     self.frame.add(lObj)
@@ -66,6 +64,7 @@ class CrawlerFrame(IApplication):
 
     def shutdown(self):
         print "downloaded ", len(url_count), " in ", time() - self.starttime, " seconds."
+        save_data('data.json', trapCheckTable, subDomainCount, invalid_links, max_out_link, trap_links)
         pass
 
 
@@ -101,20 +100,21 @@ def extract_next_links(rawDatas):
 
     Suggested library: lxml
     '''
-    global invalidLinkCount
+    global invalid_links
+    global max_out_link
     print 'len of rawDatas', len(rawDatas)
     for element in rawDatas:
-        print 'error_message', element.error_message
-        print 'http_code', element.http_code
-        print 'headers', element.headers
-        print 'is_redirected', element.is_redirected
-        print 'final_url', element.final_url
-        print 'bad_url', element.bad_url
-        print 'out_links', element.out_links
-        raw_input()
+        #print 'error_message', element.error_message
+        #print 'http_code', element.http_code
+        #print 'headers', element.headers
+        #print 'is_redirected', element.is_redirected
+        #print 'final_url', element.final_url
+        #print 'bad_url', element.bad_url
+        #print 'out_links', element.out_links
+        #raw_input()
 
         if str(element.http_code) != '200':
-            invalidLinkCount += 1
+            invalid_links.append(element.url)
             element.bad_url = True
             print 'wrong http_code'
             continue
@@ -122,16 +122,19 @@ def extract_next_links(rawDatas):
         src_url = element.url
         if element.is_redirected:
             src_url = element.final_url
+            print 'redirected', src_url
 
         if not is_valid(src_url):
             element.bad_url = True
-            print 'invalid'
+            invalid_links.append(element.url)
+            print 'not valid'
             continue
 
         src_url = remove_trailing_junk(src_url)  # remove trailing string after parameters
         print 'src_url:', src_url
+        countSubDomain(src_url)
         parsed = urlparse(src_url)
-        print parsed
+        print 'parsed', parsed
         # check if there is username:password@hostname
         credential = ''
         if parsed.username:
@@ -146,8 +149,9 @@ def extract_next_links(rawDatas):
 
         soup = BeautifulSoup(element.content, 'html.parser')
         links = soup.find_all('a')
+        num_o_link = 0
         for link in links:
-            print link
+            #print link
             o_link = ''
             if 'href' in link.attrs.keys():
                 href = link['href']
@@ -168,9 +172,17 @@ def extract_next_links(rawDatas):
                 else:
                     o_link = url_prefix + path + href
                 if o_link:
-                    print o_link
+                    #print o_link
+                    num_o_link += 1
                     outputLinks.append(o_link)
-                raw_input()
+                #raw_input()
+        if num_o_link > max_out_link[1]:
+            max_out_link = [element.url, num_o_link]
+    print 'invalid_links', len(invalid_links)
+    print 'max_out_link', max_out_link
+    print 'subDomainCount', subDomainCount
+    print 'trap_links', trap_links
+    save_data('data.json', trapCheckTable, subDomainCount, invalid_links, max_out_link, trap_links)
     return outputLinks
 
 
@@ -181,13 +193,14 @@ def is_valid(url):
 
     This is a great place to filter out crawler traps.
     '''
-    global invalidLinkCount
+    #global invalidLinkCount
     global trapCheckTable
+    global trap_links
 
     #the url must be start with http and https, and only website from ics.uci.edu, not ending with the following file format
     parsed = urlparse(url)
     if parsed.scheme not in set(["http", "https"]):
-        invalidLinkCount += 1
+        #invalidLinkCount += 1
         return False
     try:
         if ".ics.uci.edu" not in parsed.hostname \
@@ -196,7 +209,7 @@ def is_valid(url):
                                 + "|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso|epub|dll|cnf|tgz|sha1" \
                                 + "|thmx|mso|arff|rtf|jar|csv" \
                                 + "|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower()):
-            invalidLinkCount += 1
+            #invalidLinkCount += 1
             return False
     except TypeError:
         print ("TypeError for ", parsed)
@@ -205,35 +218,22 @@ def is_valid(url):
     try:
         check = requests.get(url)
         if check.status_code != 200:
-            invalidLinkCount += 1
+            #invalidLinkCount += 1
             return False
     except requests.RequestException:
-        invalidLinkCount += 1
+        #invalidLinkCount += 1
+        return False
+
+    if url != remove_trailing_junk(url):
         return False
 
     #detecting the trap
-    value = parse_qs(urlparse(url).query)
-    key = urlparse(url).netloc + urlparse(url).path
-    if len(set(value)) < 2 or 'id' in set(value):
-        return True
-
-    # check the incoming url with the url hash table. If there are more than 5 urls having exactly the same queries with the incoming url, 
-    # the incoming url will be identified as a trap and therefore return False.
-    if key in trapCheckTable and len(trapCheckTable[key]) >= 5:
-        count = 0
-        for item in trapCheckTable[key]:
-            if set(value) == set(item):
-                count += 1
-                if count >= 5:
-                    return False
-        trapCheckTable[key].append(value)
-        return True
-    elif key in trapCheckTable and len(trapCheckTable[key]) < 5:
-        trapCheckTable[key].append(value)
+    if is_not_trap(url, trapCheckTable):
         return True
     else:
-        trapCheckTable[key] = [value]
-        return True
+        trap_links.append(url)
+        return False
+
 
 # counting the numbers of subdomain, please execute is_valid to determine using this function
 def countSubDomain(url):
