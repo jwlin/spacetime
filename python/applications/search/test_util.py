@@ -24,6 +24,9 @@ class TestCrawlerFrame(unittest.TestCase):
         self.assertEqual(
             'http://www.ics.uci.edu/about/search/index.php',
             remove_trailing_junk('http://www.ics.uci.edu/about/search/index.php/about_safety.php/grad/index.php/search_payroll.php/search_graduate.php/search_sao.php/search_dean.php/search_dept_in4matx.php/search_business.php/search_dept_stats.php/search_support.php/search_facilities.php/search_payroll.php/ugrad/index.php/search_graduate.php/about_deanmsg.php/search_dean.php/ICS/ics/about/bren/index.php/about_contact.php/search_dept_stats.php/index.php/bren/index.php/ICS/ICS/search_dept_stats.php/search_business.php/search_external.php/ugrad/search_dept_cs.php/search_sao.php/search_dean.php/../about_safety.php/../about_meet_the_dean.php/../../grad/index.php'))
+        self.assertEqual(
+            'http://www.ics.uci.edu/about/visit/../bren/bren_advance.php',
+            remove_trailing_junk('http://www.ics.uci.edu/about/visit/../bren/bren_advance.php'))
 
 if __name__ == '__main__':
     unittest.main()
