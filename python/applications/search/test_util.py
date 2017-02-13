@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import unittest
-from util import merge_path, remove_trailing_junk
+from util import merge_path, remove_trailing_junk, is_repeated_path
 
 
 class TestCrawlerFrame(unittest.TestCase):
@@ -27,6 +27,31 @@ class TestCrawlerFrame(unittest.TestCase):
         self.assertEqual(
             'http://www.ics.uci.edu/about/visit/../bren/bren_advance.php',
             remove_trailing_junk('http://www.ics.uci.edu/about/visit/../bren/bren_advance.php'))
+        print remove_trailing_junk('http://www.ics.uci.edu/~pfbaldi?baldiPage=296')=='http://www.ics.uci.edu/~pfbaldi?baldiPage=296'
+
+    def test_is_repeated_path(self):
+        invalid_urls = [
+            'http://www.ics.uci.edu/alumni/hall_of_fame/stayconnected/hall_of_fame/hall_of_fame/stayconnected/hall_of_fame/hall_of_fame/inductees.aspx.php',
+            'http://www.ics.uci.edu/~mlearn/datasets/datasets/datasets/datasets/datasets/datasets/datasets/datasets/datasets/datasets/datasets/Abalone',
+            'http://www.ics.uci.edu/alumni/hall_of_fame/stayconnected/stayconnected/stayconnected/hall_of_fame/stayconnected/stayconnected/hall_of_fame/index.php'
+        ]
+        for u in invalid_urls:
+            self.assertTrue(is_repeated_path(u))
+        valid_urls = [
+            'http://www.ics.uci.edu/~pazzani/Publications/OldPublications.html',
+            'http://www.ics.uci.edu/~theory/269/970103.html',
+            'http://www.ics.uci.edu/~mlearn/datasets/datasets/CMU+Face+Images',
+            'http://alderis.ics.uci.edu/files/AMBA_AHB_Functional_Verification_2Masters_Correct.out',
+            'http://www.ics.uci.edu/~sharad',
+            'http://www.ics.uci.edu/~sharad/students.html',
+            'http://mhcid.ics.uci.edu',
+            'http://www.ics.uci.edu/about/brenhall/index.php',
+            'http://www.ics.uci.edu/~goodrich/pubs',
+            'http://www.ics.uci.edu/alumni/stayconnected/hall_of_fame/inductees.aspx.php'
+        ]
+        for u in valid_urls:
+            self.assertFalse(is_repeated_path(u))
+
 
 if __name__ == '__main__':
     unittest.main()

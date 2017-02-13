@@ -5,6 +5,7 @@ import json
 import os
 from urlparse import urlparse, parse_qs
 from shutil import copyfile
+from collections import Counter
 
 
 def remove_trailing_junk(url):
@@ -32,6 +33,13 @@ def merge_path(parent_path, href):
         elif d != '..':
             parsed_dirs.append(d)
     return '/' + '/'.join(parsed_dirs)
+
+
+def is_repeated_path(url):
+    # detect invalid urls like:
+    # http://www.ics.uci.edu/~mlearn/datasets/datasets/datasets/datasets/datasets/datasets/datasets/datasets/datasets/datasets/datasets/Abalone
+    # http://www.ics.uci.edu/alumni/hall_of_fame/stayconnected/stayconnected/stayconnected/hall_of_fame/stayconnected/stayconnected/hall_of_fame/index.php
+    return max(Counter(urlparse(url).path.split('/')).values()) > 3
 
 
 def is_not_trap(url, trapCheckTable={}):

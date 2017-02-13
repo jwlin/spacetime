@@ -8,7 +8,7 @@ import re, os
 from time import time
 import requests
 from shutil import copyfile
-from util import merge_path, remove_trailing_junk, is_not_trap, save_data, load_data
+from util import merge_path, remove_trailing_junk, is_not_trap, save_data, load_data, is_repeated_path
 
 try:
     # For python 2
@@ -22,7 +22,7 @@ LOG_HEADER = "[CRAWLER]"
 url_count = (set() 
     if not os.path.exists("successful_urls.txt") else 
     set([line.strip() for line in open("successful_urls.txt").readlines() if line.strip() != ""]))
-MAX_LINKS_TO_DOWNLOAD = 1600
+MAX_LINKS_TO_DOWNLOAD = 3000
 
 data_fname = 'data.json'
 trapCheckTable, subDomainCount, invalid_links, trap_links, max_out_link, processed_urls, black_lists = load_data(data_fname)
@@ -213,7 +213,7 @@ def is_valid(url):
                or re.match(".*\.(css|js|bmp|gif|jpe?g|ico" + "|png|tiff?|mid|mp2|mp3|mp4" \
                                 + "|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf|ppsx" \
                                 + "|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso|epub|dll|cnf|tgz|sha1" \
-                                + "|thmx|mso|arff|rtf|jar|csv|txt|py|lif|h5" \
+                                + "|thmx|mso|arff|rtf|jar|csv|txt|py|lif|h5|ply|bed|flv" \
                                 + "|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower()):
             # http://mlphysics.ics.uci.edu/data/hepjets/images/test_no_pile_5000000.h5
             # #invalidLinkCount += 1
@@ -224,6 +224,9 @@ def is_valid(url):
     for bl in black_lists:
         if bl in url:
             return False
+
+    if is_repeated_path(url):
+        return False
 
     #checking is the website connectable
     try:
